@@ -1,0 +1,33 @@
+name: Minikube CI
+
+on:
+  pull_request:
+
+jobs:
+  test-on-minikube:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@latest
+
+      - name: Verify Minikube
+        run: kubectl get pods -A
+
+      - name: Build Docker image in Minikube
+        run: minikube image build -t local/my-app:latest .
+
+      - name: Deploy to Minikube
+        run: |
+          kubectl apply -f deploy/k8s.yaml
+          kubectl wait --for=condition=ready pod -l app=my-app --timeout=90s
+
+      - name: Test App
+        run: |
+          minikube service list
+          SERVICE_URL=$(minikube service my-app-svc --url)
+          echo "Service URL: $SERVICE_URL"
+          curl $SERVICE_URL
